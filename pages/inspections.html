@@ -6,71 +6,61 @@
 <link rel="stylesheet" href="../assets/styles.css">
 <script defer src="../assets/app.js"></script>
 </head>
-<body>
+<body data-page="inspections">
   <div class="nav"><div class="container">
     <div class="brand">Irrigation Inspection Manager</div>
-    <a href="../index.html">Overview</a><a href="customers.html">Customers</a><a href="properties.html">Properties</a><a href="clocks.html">Clocks</a><a href="inspections.html" style='font-weight:700'>Inspections</a><a href="reporting.html">Reporting</a><a href="resources.html">Resources</a><a href="support.html">Support</a>
+    <a href="../index.html">Overview</a><a href="customers.html">Customers</a><a href="properties.html">Properties</a><a href="clocks.html">Clocks</a><a href="inspections.html" style="font-weight:700">Inspections</a><a href="reporting.html">Reporting</a><a href="resources.html">Resources</a><a href="support.html">Support</a>
     <a class="btn" href="javascript:printPlan()">Print</a>
   </div></div>
   <div class="container">
 
-<h2 class="h2">Inspection workflow</h2>
-<p class="lead">Guide technicians through a consistent, zone-by-zone inspection that captures the details you need for maintenance decisions.</p>
-
-<div class="grid cols-2">
-  <div class="card"><h3 class="h3">Before you start</h3>
-    <ul>
-      <li>Confirm property, clock, and zone list is accurate. Update zone names if the landscape changed.</li>
-      <li>Review previous inspection issues and outstanding work orders.</li>
-      <li>Check weather restrictions and water district rules for the scheduled day.</li>
-      <li>Sync offline mode if the property has limited connectivity.</li>
-    </ul>
-  </div>
-  <div class="card"><h3 class="h3">Technician checklist</h3>
-    <ul>
-      <li>Start inspection timer to log technician labor.</li>
-      <li>Capture meter reading (start/end) and backflow test status.</li>
-      <li>Run each zone manually and log observations, photos, and recommended actions.</li>
-      <li>Mark zones requiring repairs or quotes for follow-up scheduling.</li>
-    </ul>
+<div class="hero">
+  <h1 class="h1">Inspection log</h1>
+  <p class="lead">Track zone walkthroughs, note corrective actions, and record the inspection status for every property.</p>
+  <div class="actions" style="margin-top:12px">
+    <a class="btn" href="properties.html">Review property details</a>
+    <a class="btn" href="customers.html">Contact customers</a>
   </div>
 </div>
 
-<h3 class="h3" style="margin-top:28px">Zone inspection entry</h3>
-<div class="grid cols-2">
+<div class="grid cols-2" style="margin-top:24px">
   <div class="card">
-    <h4 class="h3">Required data</h4>
-    <ul>
-      <li><strong>Location description:</strong> e.g., "Front lawn - east side".</li>
-      <li><strong>Zone type:</strong> spray, rotor, drip, bubbler, etc.</li>
-      <li><strong>Plant type:</strong> turf, shrubs, trees, annual beds, xeriscape.</li>
-      <li><strong>Issues found:</strong> leaks, clogged nozzles, broken heads, coverage gaps, controller faults.</li>
-    </ul>
+    <h2 class="h2">Log an inspection</h2>
+    <p class="muted">Assign the inspection to a property, document the visit date, and summarize what your crew found.</p>
+    <form id="inspection-form" class="stack-form" autocomplete="off">
+      <label>Property
+        <select id="inspection-property" name="propertyId" required>
+          <option value="">Loading properties...</option>
+        </select>
+      </label>
+      <label>Inspection date
+        <input type="date" name="inspectionDate" required>
+      </label>
+      <label>Status
+        <input name="status" placeholder="Scheduled, In progress, Complete">
+      </label>
+      <label>Summary &amp; follow-up
+        <textarea name="summary" placeholder="Zone findings, repairs recommended, photos captured"></textarea>
+      </label>
+      <button type="submit">Save inspection</button>
+      <div id="inspection-feedback" class="form-feedback"></div>
+    </form>
   </div>
   <div class="card">
-    <h4 class="h3">Optional data</h4>
-    <ul>
-      <li>Photos or video clips of problem areas.</li>
-      <li>Measured pressure and flow rate readings.</li>
-      <li>Immediate actions taken (e.g., swapped nozzle) with parts used.</li>
-      <li>Estimated labor/material cost for follow-up work orders.</li>
-    </ul>
+    <h2 class="h2">Recent inspections</h2>
+    <p class="muted">Monitor outstanding follow-up work and keep a trail of what was evaluated in each zone.</p>
+    <table class="table" id="inspection-table">
+      <thead>
+        <tr><th>Property</th><th>Visit</th><th>Summary</th></tr>
+      </thead>
+      <tbody>
+        <tr><td colspan="99" class="muted">Loading inspections...</td></tr>
+      </tbody>
+    </table>
   </div>
 </div>
 
-<div class="card" style="margin-top:24px">
-  <h3 class="h3">Inspection completion</h3>
-  <ul>
-    <li>Summarize labor time, material used, and zones requiring quotes.</li>
-    <li>Generate PDF report with customer-friendly language and technician notes.</li>
-    <li>Send follow-up tasks to maintenance team or integrate with field service software.</li>
-    <li>Close the inspection to update property status and trigger customer notifications.</li>
-  </ul>
-</div>
-
-<p style="margin-top:24px"><a class="btn" href="reporting.html">Next: turn inspections into reports</a></p>
-
-  <div class="footer">Consistent inspection data builds trust with customers and simplifies repair scheduling.</div>
+  <div class="footer">Completed inspections feed into your reports and renewal conversations.</div>
   </div>
 </body>
 </html>
