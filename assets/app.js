@@ -51,12 +51,21 @@ const formatDate = (value) => {
   return date.toLocaleDateString();
 };
 
+const formatStatusLabel = (value) => {
+  if (!value) return '';
+  return value
+    .split('_')
+    .map((segment) => segment.charAt(0).toUpperCase() + segment.slice(1))
+    .join(' ');
+};
+
 const setFeedback = (element, message, type = 'info') => {
   if (!element) return;
-  element.textContent = message;
-  element.dataset.state = type;
+  element.textContent = message || '';
   if (!message) {
     delete element.dataset.state;
+  } else {
+    element.dataset.state = type;
   }
 };
 
@@ -65,90 +74,163 @@ const renderEmptyState = (container, message) => {
   container.innerHTML = `<tr><td colspan="99" class="muted">${message}</td></tr>`;
 };
 
-const initCustomersPage = () => {
-  const form = document.querySelector('#customer-form');
-  const feedback = document.querySelector('#customer-feedback');
-  const tableBody = document.querySelector('#customer-table tbody');
+const resetFormState = (form, submitButton, cancelButton, defaultLabel) => {
+  if (!form) return;
+  form.reset();
+  form.removeAttribute('data-editing');
+  if (submitButton) {
+    submitButton.textContent = defaultLabel;
+  }
+  if (cancelButton) {
+    cancelButton.hidden = true;
+  }
+};
 
-  const loadCustomers = async () => {
+const initContactsPage = () => {
+  const form = document.querySelector('#contact-form');
+  const submitButton = document.querySelector('#contact-submit');
+  const cancelButton = document.querySelector('#contact-cancel');
+  const feedback = document.querySelector('#contact-feedback');
+  const tableBody = document.querySelector('#contacts-table tbody');
+
+  const loadContacts = async () => {
     try {
-      const customers = await fetchJSON('/api/customers');
-      if (!customers || customers.length === 0) {
-        renderEmptyState(tableBody, 'No customers yet. Add your first one with the form on the left.');
+      const contacts = await fetchJSON('/api/contacts');
+      if (!contacts || contacts.length === 0) {
+        renderEmptyState(tableBody, 'No contacts yet. Add your first one with the form.');
         return;
       }
-      tableBody.innerHTML = customers
+
+      tableBody.innerHTML = contacts
         .map(
-          (customer) => `
-            <tr>
-              <td><strong>${customer.name}</strong><div class="muted">${customer.email || '—'}</div></td>
+          (contact) => `
+            <tr data-id="${contact.id}">
               <td>
-                ${customer.phone || '—'}
+                <strong>${contact.name}</strong>
+                <div class="muted">${contact.organization || '—'}</div>
               </td>
+              <td>${contact.phone || '—'}</td>
+              <td>${contact.email || '—'}</td>
               <td>
-                ${customer.propertyCount} linked ${customer.propertyCount === 1 ? 'property' : 'properties'}
-                <div class="muted">Added ${formatDateTime(customer.created_at)}</div>
+                <div class="table-actions">
+                  <button type="button" class="btn" data-action="edit">Edit</button>
+                  <button type="button" class="btn btn--danger" data-action="delete">Delete</button>
+                </div>
               </td>
             </tr>
           `
         )
         .join('');
     } catch (error) {
-      renderEmptyState(tableBody, error.message || 'Unable to load customers.');
+      renderEmptyState(tableBody, error.message || 'Unable to load contacts.');
     }
   };
 
   if (form) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      setFeedback(feedback, 'Saving customer...', 'info');
+      setFeedback(feedback, 'Saving contact...', 'info');
       const formData = new FormData(form);
       const payload = {
         name: formData.get('name') || '',
+        organization: formData.get('organization') || '',
         phone: formData.get('phone') || '',
         email: formData.get('email') || '',
       };
 
+      const editingId = form.dataset.editing;
+      const method = editingId ? 'PUT' : 'POST';
+      const url = editingId ? `/api/contacts/${editingId}` : '/api/contacts';
+
       try {
-        await fetchJSON('/api/customers', {
-          method: 'POST',
+        await fetchJSON(url, {
+          method,
           body: JSON.stringify(payload),
         });
-        form.reset();
-        setFeedback(feedback, 'Customer saved successfully.', 'success');
-        await loadCustomers();
+        setFeedback(feedback, 'Contact saved successfully.', 'success');
+        resetFormState(form, submitButton, cancelButton, 'Save contact');
+        await loadContacts();
       } catch (error) {
         setFeedback(feedback, error.message, 'error');
       }
     });
   }
 
-  loadCustomers();
+  if (cancelButton) {
+    cancelButton.addEventListener('click', () => {
+      resetFormState(form, submitButton, cancelButton, 'Save contact');
+      setFeedback(feedback, 'Edit cancelled.', 'info');
+    });
+  }
+
+  if (tableBody) {
+    tableBody.addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+      const row = button.closest('tr[data-id]');
+      if (!row) return;
+      const id = row.dataset.id;
+
+      if (button.dataset.action === 'edit') {
+        try {
+          const match = await fetchJSON(`/api/contacts/${id}`);
+          form.dataset.editing = match.id;
+          form.elements.name.value = match.name || '';
+          form.elements.organization.value = match.organization || '';
+          form.elements.phone.value = match.phone || '';
+          form.elements.email.value = match.email || '';
+          submitButton.textContent = 'Update contact';
+          cancelButton.hidden = false;
+          setFeedback(feedback, 'Editing contact. Make changes and save.', 'info');
+        } catch (error) {
+          setFeedback(feedback, error.message, 'error');
+        }
+      } else if (button.dataset.action === 'delete') {
+        if (!confirm('Delete this contact? Any linked properties will also be removed.')) {
+          return;
+        }
+        try {
+          await fetchJSON(`/api/contacts/${id}`, { method: 'DELETE' });
+          setFeedback(feedback, 'Contact deleted.', 'success');
+          if (form.dataset.editing === id) {
+            resetFormState(form, submitButton, cancelButton, 'Save contact');
+          }
+          await loadContacts();
+        } catch (error) {
+          setFeedback(feedback, error.message, 'error');
+        }
+      }
+    });
+  }
+
+  loadContacts();
 };
 
 const initPropertiesPage = () => {
   const form = document.querySelector('#property-form');
+  const submitButton = document.querySelector('#property-submit');
+  const cancelButton = document.querySelector('#property-cancel');
   const feedback = document.querySelector('#property-feedback');
-  const customerSelect = document.querySelector('#property-customer');
+  const contactSelect = document.querySelector('#property-contact');
   const tableBody = document.querySelector('#property-table tbody');
 
-  const populateCustomers = async () => {
-    if (!customerSelect) return;
+  const loadContactsForSelect = async () => {
+    if (!contactSelect) return;
     try {
-      const customers = await fetchJSON('/api/customers');
-      if (!customers || customers.length === 0) {
-        customerSelect.innerHTML = '<option value="">Add a customer first</option>';
-        customerSelect.disabled = true;
+      const contacts = await fetchJSON('/api/contacts');
+      if (!contacts || contacts.length === 0) {
+        contactSelect.innerHTML = '<option value="">Add a contact first</option>';
+        contactSelect.disabled = true;
         return;
       }
-      customerSelect.disabled = false;
-      customerSelect.innerHTML = '<option value="">Select a customer</option>' +
-        customers
-          .map((customer) => `<option value="${customer.id}">${customer.name}</option>`)
+      contactSelect.disabled = false;
+      contactSelect.innerHTML = '<option value="">Select a contact</option>' +
+        contacts
+          .map((contact) => `<option value="${contact.id}">${contact.name}</option>`)
           .join('');
     } catch (error) {
-      customerSelect.innerHTML = `<option value="">${error.message}</option>`;
-      customerSelect.disabled = true;
+      contactSelect.innerHTML = `<option value="">${error.message}</option>`;
+      contactSelect.disabled = true;
     }
   };
 
@@ -156,24 +238,29 @@ const initPropertiesPage = () => {
     try {
       const properties = await fetchJSON('/api/properties');
       if (!properties || properties.length === 0) {
-        renderEmptyState(tableBody, 'No properties captured yet. Add your first property with the form on the left.');
+        renderEmptyState(tableBody, 'No properties yet. Add one with the form.');
         return;
       }
+
       tableBody.innerHTML = properties
         .map(
           (property) => `
-            <tr>
+            <tr data-id="${property.id}">
               <td>
                 <strong>${property.name}</strong>
-                <div class="muted">${property.address || 'Address not provided'}</div>
+                <div class="muted">${property.address}</div>
               </td>
               <td>
-                ${property.customerName || 'Unknown customer'}
-                <div class="muted">${property.inspectionCount} inspections logged</div>
+                ${property.contactName || '—'}
+                <div class="muted">${property.contactEmail || ''}</div>
               </td>
+              <td>${property.city || '—'}, ${property.state || '—'} ${property.postal_code || ''}</td>
+              <td>${property.notes ? property.notes : '<span class="muted">No site notes</span>'}</td>
               <td>
-                ${property.notes ? property.notes : '<span class="muted">No site notes</span>'}
-                <div class="muted">Added ${formatDateTime(property.created_at)}</div>
+                <div class="table-actions">
+                  <button type="button" class="btn" data-action="edit">Edit</button>
+                  <button type="button" class="btn btn--danger" data-action="delete">Delete</button>
+                </div>
               </td>
             </tr>
           `
@@ -190,35 +277,322 @@ const initPropertiesPage = () => {
       setFeedback(feedback, 'Saving property...', 'info');
       const formData = new FormData(form);
       const payload = {
-        customerId: formData.get('customerId'),
+        contactId: formData.get('contactId'),
         name: formData.get('name') || '',
         address: formData.get('address') || '',
+        city: formData.get('city') || '',
+        state: formData.get('state') || '',
+        postalCode: formData.get('postalCode') || '',
         notes: formData.get('notes') || '',
       };
 
+      const editingId = form.dataset.editing;
+      const method = editingId ? 'PUT' : 'POST';
+      const url = editingId ? `/api/properties/${editingId}` : '/api/properties';
+
       try {
-        await fetchJSON('/api/properties', {
-          method: 'POST',
+        await fetchJSON(url, {
+          method,
           body: JSON.stringify(payload),
         });
-        form.reset();
         setFeedback(feedback, 'Property saved successfully.', 'success');
-        await Promise.all([loadProperties(), populateCustomers()]);
+        resetFormState(form, submitButton, cancelButton, 'Save property');
+        await Promise.all([loadProperties(), loadContactsForSelect()]);
       } catch (error) {
         setFeedback(feedback, error.message, 'error');
       }
     });
   }
 
-  populateCustomers();
+  if (cancelButton) {
+    cancelButton.addEventListener('click', () => {
+      resetFormState(form, submitButton, cancelButton, 'Save property');
+      setFeedback(feedback, 'Edit cancelled.', 'info');
+    });
+  }
+
+  if (tableBody) {
+    tableBody.addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+      const row = button.closest('tr[data-id]');
+      if (!row) return;
+      const id = row.dataset.id;
+
+      if (button.dataset.action === 'edit') {
+        try {
+          const match = await fetchJSON(`/api/properties/${id}`);
+          if (!match) {
+            setFeedback(feedback, 'Unable to load that property.', 'error');
+            return;
+          }
+          if (
+            contactSelect &&
+            !Array.from(contactSelect.options).some((option) => option.value === String(match.contact_id))
+          ) {
+            await loadContactsForSelect();
+          }
+          form.dataset.editing = match.id;
+          form.elements.contactId.value = String(match.contact_id);
+          form.elements.name.value = match.name || '';
+          form.elements.address.value = match.address || '';
+          form.elements.city.value = match.city || '';
+          form.elements.state.value = match.state || '';
+          form.elements.postalCode.value = match.postal_code || '';
+          form.elements.notes.value = match.notes || '';
+          submitButton.textContent = 'Update property';
+          cancelButton.hidden = false;
+          setFeedback(feedback, 'Editing property. Make changes and save.', 'info');
+        } catch (error) {
+          setFeedback(feedback, error.message, 'error');
+        }
+      } else if (button.dataset.action === 'delete') {
+        if (!confirm('Delete this property and all linked clocks?')) {
+          return;
+        }
+        try {
+          await fetchJSON(`/api/properties/${id}`, { method: 'DELETE' });
+          setFeedback(feedback, 'Property deleted.', 'success');
+          if (form.dataset.editing === id) {
+            resetFormState(form, submitButton, cancelButton, 'Save property');
+          }
+          await loadProperties();
+        } catch (error) {
+          setFeedback(feedback, error.message, 'error');
+        }
+      }
+    });
+  }
+
+  loadContactsForSelect();
   loadProperties();
 };
 
+const initClocksPage = () => {
+  const form = document.querySelector('#clock-form');
+  const submitButton = document.querySelector('#clock-submit');
+  const cancelButton = document.querySelector('#clock-cancel');
+  const feedback = document.querySelector('#clock-feedback');
+  const propertySelect = document.querySelector('#clock-property');
+  const filterSelect = document.querySelector('#clock-filter');
+  const tableBody = document.querySelector('#clock-table tbody');
+
+  let allProperties = [];
+
+  const loadProperties = async () => {
+    try {
+      const previousFormSelection = propertySelect ? propertySelect.value : '';
+      const previousFilterSelection = filterSelect ? filterSelect.value : '';
+      allProperties = await fetchJSON('/api/properties');
+      if (!Array.isArray(allProperties) || allProperties.length === 0) {
+        propertySelect.innerHTML = '<option value="">Add a property first</option>';
+        propertySelect.disabled = true;
+        if (filterSelect) {
+          filterSelect.innerHTML = '<option value="">All properties</option>';
+          filterSelect.disabled = true;
+        }
+        return;
+      }
+
+      propertySelect.disabled = false;
+      propertySelect.innerHTML = '<option value="">Select a property</option>' +
+        allProperties.map((property) => `<option value="${property.id}">${property.name}</option>`).join('');
+      if (previousFormSelection) {
+        const match = Array.from(propertySelect.options).some((option) => option.value === previousFormSelection);
+        if (match) {
+          propertySelect.value = previousFormSelection;
+        }
+      }
+
+      if (filterSelect) {
+        filterSelect.disabled = false;
+        filterSelect.innerHTML = '<option value="">All properties</option>' +
+          allProperties.map((property) => `<option value="${property.id}">${property.name}</option>`).join('');
+        if (previousFilterSelection) {
+          const filterMatch = Array.from(filterSelect.options).some((option) => option.value === previousFilterSelection);
+          if (filterMatch) {
+            filterSelect.value = previousFilterSelection;
+          }
+        }
+      }
+    } catch (error) {
+      propertySelect.innerHTML = `<option value="">${error.message}</option>`;
+      propertySelect.disabled = true;
+      if (filterSelect) {
+        filterSelect.innerHTML = `<option value="">${error.message}</option>`;
+        filterSelect.disabled = true;
+      }
+    }
+  };
+
+  const loadClocks = async () => {
+    const propertyId = filterSelect ? filterSelect.value : '';
+    const url = propertyId ? `/api/clocks?propertyId=${propertyId}` : '/api/clocks';
+    try {
+      const clocks = await fetchJSON(url);
+      if (!clocks || clocks.length === 0) {
+        renderEmptyState(tableBody, 'No clocks yet. Add one with the form.');
+        return;
+      }
+
+      tableBody.innerHTML = clocks
+        .map((clock) => `
+          <tr data-id="${clock.id}">
+            <td>
+              <strong>${clock.label}</strong>
+              <div class="muted">${clock.manufacturer || '—'} ${clock.model || ''}</div>
+            </td>
+            <td>
+              ${clock.propertyName || '—'}
+              <div class="muted">${clock.propertyAddress || ''}</div>
+            </td>
+            <td>${clock.station_count}</td>
+            <td>${clock.location || '—'}</td>
+            <td>
+              <div class="table-actions">
+                <button type="button" class="btn" data-action="edit">Edit</button>
+                <button type="button" class="btn btn--danger" data-action="delete">Delete</button>
+              </div>
+            </td>
+          </tr>
+        `)
+        .join('');
+    } catch (error) {
+      renderEmptyState(tableBody, error.message || 'Unable to load clocks.');
+    }
+  };
+
+  if (filterSelect) {
+    filterSelect.addEventListener('change', () => {
+      loadClocks();
+    });
+  }
+
+  if (form) {
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      setFeedback(feedback, 'Saving clock...', 'info');
+      const formData = new FormData(form);
+      const payload = {
+        propertyId: formData.get('propertyId'),
+        label: formData.get('label') || '',
+        manufacturer: formData.get('manufacturer') || '',
+        model: formData.get('model') || '',
+        stationCount: formData.get('stationCount') || '',
+        location: formData.get('location') || '',
+        notes: formData.get('notes') || '',
+      };
+
+      const editingId = form.dataset.editing;
+      const method = editingId ? 'PUT' : 'POST';
+      const url = editingId ? `/api/clocks/${editingId}` : '/api/clocks';
+
+      try {
+        await fetchJSON(url, {
+          method,
+          body: JSON.stringify(payload),
+        });
+        setFeedback(feedback, 'Clock saved successfully.', 'success');
+        resetFormState(form, submitButton, cancelButton, 'Save clock');
+        await Promise.all([loadClocks(), loadProperties()]);
+      } catch (error) {
+        setFeedback(feedback, error.message, 'error');
+      }
+    });
+  }
+
+  if (cancelButton) {
+    cancelButton.addEventListener('click', () => {
+      resetFormState(form, submitButton, cancelButton, 'Save clock');
+      setFeedback(feedback, 'Edit cancelled.', 'info');
+    });
+  }
+
+  if (tableBody) {
+    tableBody.addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button) return;
+      const row = button.closest('tr[data-id]');
+      if (!row) return;
+      const id = row.dataset.id;
+
+      if (button.dataset.action === 'edit') {
+        try {
+          const match = await fetchJSON(`/api/clocks/${id}`);
+          if (!match) {
+            setFeedback(feedback, 'Unable to load that clock.', 'error');
+            return;
+          }
+          if (
+            propertySelect &&
+            !Array.from(propertySelect.options).some((option) => option.value === String(match.property_id))
+          ) {
+            await loadProperties();
+          }
+          form.dataset.editing = match.id;
+          form.elements.propertyId.value = String(match.property_id);
+          form.elements.label.value = match.label || '';
+          form.elements.manufacturer.value = match.manufacturer || '';
+          form.elements.model.value = match.model || '';
+          form.elements.stationCount.value = match.station_count || '';
+          form.elements.location.value = match.location || '';
+          form.elements.notes.value = match.notes || '';
+          submitButton.textContent = 'Update clock';
+          cancelButton.hidden = false;
+          setFeedback(feedback, 'Editing clock. Make changes and save.', 'info');
+        } catch (error) {
+          setFeedback(feedback, error.message, 'error');
+        }
+      } else if (button.dataset.action === 'delete') {
+        if (!confirm('Delete this clock and its inspection history?')) {
+          return;
+        }
+        try {
+          await fetchJSON(`/api/clocks/${id}`, { method: 'DELETE' });
+          setFeedback(feedback, 'Clock deleted.', 'success');
+          if (form.dataset.editing === id) {
+            resetFormState(form, submitButton, cancelButton, 'Save clock');
+          }
+          await loadClocks();
+        } catch (error) {
+          setFeedback(feedback, error.message, 'error');
+        }
+      }
+    });
+  }
+
+  loadProperties().then(loadClocks);
+};
+
 const initInspectionsPage = () => {
-  const form = document.querySelector('#inspection-form');
-  const feedback = document.querySelector('#inspection-feedback');
   const propertySelect = document.querySelector('#inspection-property');
-  const tableBody = document.querySelector('#inspection-table tbody');
+  const clockSelect = document.querySelector('#inspection-clock');
+  const newButton = document.querySelector('#inspection-new');
+  const resumeButton = document.querySelector('#inspection-resume');
+  const feedback = document.querySelector('#inspection-feedback');
+  const detailContainer = document.querySelector('#inspection-detail-content');
+  const form = document.querySelector('#inspection-form');
+  const historyBody = document.querySelector('#inspection-history tbody');
+
+  let currentClockId = null;
+  let currentInProgress = null;
+
+  const resetDetail = () => {
+    if (form) {
+      form.classList.add('hidden');
+      form.reset();
+      delete form.dataset.id;
+    }
+    if (detailContainer) {
+      detailContainer.innerHTML = '<p class="muted">Select a property and clock to view inspection details.</p>';
+    }
+    if (historyBody) {
+      historyBody.innerHTML = '<tr><td colspan="4" class="muted">No inspection history yet.</td></tr>';
+    }
+    currentInProgress = null;
+    if (resumeButton) resumeButton.disabled = true;
+    if (newButton) newButton.disabled = true;
+  };
 
   const populateProperties = async () => {
     if (!propertySelect) return;
@@ -227,71 +601,262 @@ const initInspectionsPage = () => {
       if (!properties || properties.length === 0) {
         propertySelect.innerHTML = '<option value="">Add a property first</option>';
         propertySelect.disabled = true;
+        if (clockSelect) {
+          clockSelect.innerHTML = '<option value="">Select a property first</option>';
+          clockSelect.disabled = true;
+        }
+        resetDetail();
         return;
       }
       propertySelect.disabled = false;
       propertySelect.innerHTML = '<option value="">Select a property</option>' +
-        properties
-          .map((property) => `<option value="${property.id}">${property.name} • ${property.customerName || 'Customer unknown'}</option>`)
-          .join('');
+        properties.map((property) => `<option value="${property.id}">${property.name}</option>`).join('');
     } catch (error) {
       propertySelect.innerHTML = `<option value="">${error.message}</option>`;
       propertySelect.disabled = true;
     }
   };
 
-  const loadInspections = async () => {
+  const populateClocks = async (propertyId) => {
+    if (!clockSelect) return;
+    if (!propertyId) {
+      clockSelect.innerHTML = '<option value="">Select a property first</option>';
+      clockSelect.disabled = true;
+      resetDetail();
+      return;
+    }
     try {
-      const inspections = await fetchJSON('/api/inspections');
-      if (!inspections || inspections.length === 0) {
-        renderEmptyState(tableBody, 'No inspections logged yet. Schedule one with the form on the left.');
+      const clocks = await fetchJSON(`/api/clocks?propertyId=${propertyId}`);
+      if (!clocks || clocks.length === 0) {
+        clockSelect.innerHTML = '<option value="">Add a clock for this property</option>';
+        clockSelect.disabled = true;
+        resetDetail();
         return;
       }
-      tableBody.innerHTML = inspections
-        .map(
-          (inspection) => `
-            <tr>
-              <td>
-                <strong>${inspection.propertyName || 'Unknown property'}</strong>
-                <div class="muted">${inspection.customerName || 'Customer not linked'}</div>
-              </td>
-              <td>
-                ${formatDate(inspection.inspection_date)}
-                <div class="status-badge">${inspection.status || 'No status set'}</div>
-              </td>
-              <td>
-                ${inspection.summary ? inspection.summary : '<span class="muted">No summary provided</span>'}
-                <div class="muted">Logged ${formatDateTime(inspection.created_at)}</div>
-              </td>
-            </tr>
-          `
-        )
-        .join('');
+      clockSelect.disabled = false;
+      clockSelect.innerHTML = '<option value="">Select a clock</option>' +
+        clocks.map((clock) => `<option value="${clock.id}">${clock.label}</option>`).join('');
     } catch (error) {
-      renderEmptyState(tableBody, error.message || 'Unable to load inspections.');
+      clockSelect.innerHTML = `<option value="">${error.message}</option>`;
+      clockSelect.disabled = true;
+      resetDetail();
     }
   };
+
+  const renderHistory = (inspections) => {
+    if (!historyBody) return;
+    const past = inspections.filter((inspection) => inspection.status !== 'in_progress');
+    if (past.length === 0) {
+      historyBody.innerHTML = '<tr><td colspan="4" class="muted">No completed inspections yet.</td></tr>';
+      return;
+    }
+    historyBody.innerHTML = past
+      .map(
+        (inspection) => `
+          <tr data-id="${inspection.id}" class="inspection-row">
+            <td>${formatDate(inspection.started_at)}</td>
+            <td>${formatStatusLabel(inspection.status)}</td>
+            <td>${inspection.summary ? inspection.summary : '<span class="muted">No summary</span>'}</td>
+            <td>${inspection.completed_at ? formatDateTime(inspection.completed_at) : '—'}</td>
+          </tr>
+        `
+      )
+      .join('');
+  };
+
+  const showInspectionDetail = (inspection, { editable } = { editable: false }) => {
+    if (!detailContainer || !form) return;
+    const startedDate = inspection.started_at ? inspection.started_at.slice(0, 10) : '';
+    const completedDate = inspection.completed_at ? inspection.completed_at.slice(0, 10) : '';
+    if (editable) {
+      form.classList.remove('hidden');
+      form.dataset.id = inspection.id;
+      form.elements.status.value = inspection.status;
+      form.elements.summary.value = inspection.summary || '';
+      form.elements.notes.value = inspection.notes || '';
+      form.elements.startedAt.value = startedDate;
+      form.elements.completedAt.value = completedDate;
+      detailContainer.innerHTML = `
+        <div>
+          <h3>Inspection in progress</h3>
+          <p class="muted">Started ${formatDateTime(inspection.started_at)} on ${inspection.clockLabel} at ${inspection.propertyName}.</p>
+        </div>
+      `;
+    } else {
+      form.classList.add('hidden');
+      delete form.dataset.id;
+      detailContainer.innerHTML = `
+        <div class="card__snapshot">
+          <h3>${inspection.clockLabel}</h3>
+          <p class="muted">${inspection.propertyName}</p>
+          <p><strong>Status:</strong> ${formatStatusLabel(inspection.status)}</p>
+          <p><strong>Started:</strong> ${formatDateTime(inspection.started_at)}</p>
+          <p><strong>Completed:</strong> ${inspection.completed_at ? formatDateTime(inspection.completed_at) : '—'}</p>
+          <p><strong>Summary:</strong> ${inspection.summary || '—'}</p>
+          <p><strong>Notes:</strong> ${inspection.notes || '—'}</p>
+        </div>
+      `;
+    }
+  };
+
+  const loadInspectionState = async (clockId) => {
+    if (!clockId) {
+      resetDetail();
+      return;
+    }
+    try {
+      const inspections = await fetchJSON(`/api/inspections?clockId=${clockId}`);
+      if (!inspections) {
+        resetDetail();
+        return;
+      }
+      renderHistory(inspections);
+      currentInProgress = inspections.find((inspection) => inspection.status === 'in_progress');
+      if (currentInProgress) {
+        showInspectionDetail(currentInProgress, { editable: true });
+        if (resumeButton) resumeButton.disabled = false;
+        if (newButton) newButton.disabled = true;
+      } else {
+        if (form) {
+          form.classList.add('hidden');
+          delete form.dataset.id;
+        }
+        if (detailContainer) {
+          detailContainer.innerHTML = '<p class="muted">Ready for a new inspection. Use the buttons to get started.</p>';
+        }
+        if (resumeButton) resumeButton.disabled = true;
+        if (newButton) newButton.disabled = false;
+      }
+    } catch (error) {
+      resetDetail();
+      setFeedback(feedback, error.message, 'error');
+    }
+  };
+
+  if (propertySelect) {
+    propertySelect.addEventListener('change', (event) => {
+      const propertyId = event.target.value;
+      currentClockId = null;
+      if (newButton) newButton.disabled = true;
+      if (resumeButton) resumeButton.disabled = true;
+      populateClocks(propertyId);
+    });
+  }
+
+  if (clockSelect) {
+    clockSelect.addEventListener('change', (event) => {
+      const clockId = event.target.value;
+      currentClockId = clockId || null;
+      if (!clockId) {
+        resetDetail();
+        return;
+      }
+      loadInspectionState(clockId);
+    });
+  }
+
+  if (newButton) {
+    newButton.addEventListener('click', async () => {
+      if (!currentClockId) return;
+      setFeedback(feedback, 'Creating inspection...', 'info');
+      try {
+        await fetchJSON('/api/inspections', {
+          method: 'POST',
+          body: JSON.stringify({ clockId: currentClockId }),
+        });
+        setFeedback(feedback, 'Inspection started. Add notes and complete when ready.', 'success');
+        await loadInspectionState(currentClockId);
+      } catch (error) {
+        setFeedback(feedback, error.message, 'error');
+      }
+    });
+  }
+
+  if (resumeButton) {
+    resumeButton.addEventListener('click', () => {
+      if (!currentInProgress || !form) return;
+      showInspectionDetail(currentInProgress, { editable: true });
+      form.scrollIntoView({ behavior: 'smooth' });
+    });
+  }
 
   if (form) {
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
-      setFeedback(feedback, 'Saving inspection...', 'info');
+      if (!form.dataset.id) return;
+      setFeedback(feedback, 'Saving inspection progress...', 'info');
       const formData = new FormData(form);
       const payload = {
-        propertyId: formData.get('propertyId'),
-        inspectionDate: formData.get('inspectionDate'),
-        status: formData.get('status') || '',
+        status: formData.get('status') || 'in_progress',
         summary: formData.get('summary') || '',
+        notes: formData.get('notes') || '',
+        startedAt: formData.get('startedAt') || '',
+        completedAt: formData.get('completedAt') || '',
       };
-
       try {
-        await fetchJSON('/api/inspections', {
-          method: 'POST',
+        const updated = await fetchJSON(`/api/inspections/${form.dataset.id}`, {
+          method: 'PATCH',
           body: JSON.stringify(payload),
         });
-        form.reset();
-        setFeedback(feedback, 'Inspection logged successfully.', 'success');
-        await Promise.all([loadInspections(), populateProperties()]);
+        setFeedback(feedback, 'Inspection updated.', 'success');
+        currentInProgress = updated.status === 'in_progress' ? updated : null;
+        await loadInspectionState(currentClockId);
+      } catch (error) {
+        setFeedback(feedback, error.message, 'error');
+      }
+    });
+
+    form.addEventListener('click', async (event) => {
+      const button = event.target.closest('button[data-action]');
+      if (!button || !form.dataset.id) return;
+      event.preventDefault();
+      const action = button.dataset.action;
+      const now = new Date().toISOString();
+      try {
+        if (action === 'complete') {
+          setFeedback(feedback, 'Completing inspection...', 'info');
+          await fetchJSON(`/api/inspections/${form.dataset.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({
+              status: 'completed',
+              completedAt: now,
+            }),
+          });
+          setFeedback(feedback, 'Inspection completed.', 'success');
+        } else if (action === 'archive') {
+          if (!confirm('Archive this inspection?')) {
+            return;
+          }
+          setFeedback(feedback, 'Archiving inspection...', 'info');
+          await fetchJSON(`/api/inspections/${form.dataset.id}`, {
+            method: 'PATCH',
+            body: JSON.stringify({ status: 'archived' }),
+          });
+          setFeedback(feedback, 'Inspection archived.', 'success');
+        } else if (action === 'delete') {
+          if (!confirm('Delete this inspection permanently?')) {
+            return;
+          }
+          setFeedback(feedback, 'Deleting inspection...', 'info');
+          await fetchJSON(`/api/inspections/${form.dataset.id}`, {
+            method: 'DELETE',
+          });
+          setFeedback(feedback, 'Inspection deleted.', 'success');
+        }
+        await loadInspectionState(currentClockId);
+      } catch (error) {
+        setFeedback(feedback, error.message, 'error');
+      }
+    });
+  }
+
+  if (historyBody) {
+    historyBody.addEventListener('click', async (event) => {
+      const row = event.target.closest('tr[data-id]');
+      if (!row) return;
+      try {
+        const inspection = await fetchJSON(`/api/inspections/${row.dataset.id}`);
+        showInspectionDetail(inspection, { editable: false });
       } catch (error) {
         setFeedback(feedback, error.message, 'error');
       }
@@ -299,465 +864,19 @@ const initInspectionsPage = () => {
   }
 
   populateProperties();
-  loadInspections();
 };
 
 const initPage = () => {
   const page = document.body.dataset.page;
-  if (page === 'customers') {
-    initCustomersPage();
+  if (page === 'contacts') {
+    initContactsPage();
   } else if (page === 'properties') {
     initPropertiesPage();
+  } else if (page === 'clocks') {
+    initClocksPage();
   } else if (page === 'inspections') {
     initInspectionsPage();
   }
 };
 
 document.addEventListener('DOMContentLoaded', initPage);
-
-const store = {
-  customers: [
-    {
-      id: "cust-greenfields",
-      name: "Green Fields HOA",
-      email: "board@greenfields-hoa.com",
-      phone: "501-555-1212",
-    },
-    {
-      id: "cust-oakandivy",
-      name: "Oak & Ivy Property Group",
-      email: "service@oakivygroup.com",
-      phone: "501-555-8899",
-    },
-  ],
-  properties: [
-    {
-      id: "prop-meadow",
-      customerId: "cust-greenfields",
-      name: "Main Entrance",
-      address: "291 State Park Rd, Hot Springs, AR 71913",
-      notes: "Seasonal color beds along frontage. Ensure drip zones have pressure reducers.",
-    },
-    {
-      id: "prop-lakeside",
-      customerId: "cust-greenfields",
-      name: "Lakeside Cabins",
-      address: "540 Lakeside Loop, Hot Springs, AR 71913",
-      notes: "Cabins 1-4 share irrigation main. Monitor for lake draw restrictions mid-summer.",
-    },
-    {
-      id: "prop-oakridge",
-      customerId: "cust-oakandivy",
-      name: "Oak Ridge Retail Center",
-      address: "1180 Malvern Ave, Hot Springs, AR 71901",
-      notes: "Median turf watered overnight. Report recurring zone 5 head damage to tenant.",
-    },
-  ],
-  clocks: [
-    {
-      id: "clock-meadow-front",
-      propertyId: "prop-meadow",
-      make: "Rain Bird",
-      model: "ESP-Me",
-      zoneCount: 12,
-      inspections: [
-        {
-          date: "2024-03-14",
-          status: "Passed",
-          notes: "Reprogrammed seasonal adjustment to 85%. Replaced zone 7 spray nozzle.",
-        },
-        {
-          date: "2023-11-01",
-          status: "Needs Follow-up",
-          notes: "Master valve slow to close. Monitor after winterization.",
-        },
-      ],
-    },
-    {
-      id: "clock-lakeside-cabins",
-      propertyId: "prop-lakeside",
-      make: "Hunter",
-      model: "Pro-C",
-      zoneCount: 8,
-      inspections: [
-        {
-          date: "2024-04-02",
-          status: "Passed",
-          notes: "Cabin 3 drip flushed and emitters cleared.",
-        },
-      ],
-    },
-    {
-      id: "clock-oakridge-north",
-      propertyId: "prop-oakridge",
-      make: "Hydro-Rain",
-      model: "HRX Hybrid",
-      zoneCount: 18,
-      inspections: [
-        {
-          date: "2024-02-21",
-          status: "Needs Repair",
-          notes: "Zone 5 valve coil failed continuity. Parts ordered.",
-        },
-      ],
-    },
-  ],
-};
-
-const state = {
-  selectedCustomerId: null,
-};
-
-const customerListEl = document.getElementById("customerList");
-const customerDetailEl = document.getElementById("customerDetail");
-
-function init() {
-  if (!customerListEl || !customerDetailEl) {
-    return;
-  }
-
-  renderCustomers();
-  if (store.customers.length) {
-    selectCustomer(store.customers[0].id);
-  }
-  bindEvents();
-}
-
-function bindEvents() {
-  if (!customerListEl) {
-    return;
-  }
-
-  customerListEl.addEventListener("click", (event) => {
-    const button = event.target.closest("button.customer-item");
-    if (!button) return;
-    selectCustomer(button.dataset.id);
-  });
-
-  document.addEventListener("submit", (event) => {
-    const form = event.target;
-    if (!(form instanceof HTMLFormElement)) return;
-
-    const { action } = form.dataset;
-    if (!action) return;
-
-    event.preventDefault();
-
-    switch (action) {
-      case "add-customer":
-        handleAddCustomer(form);
-        break;
-      case "add-property":
-        handleAddProperty(form);
-        break;
-      case "add-clock":
-        handleAddClock(form);
-        break;
-      case "add-inspection":
-        handleAddInspection(form);
-        break;
-      default:
-        break;
-    }
-  });
-}
-
-function renderCustomers() {
-  const items = store.customers
-    .slice()
-    .sort((a, b) => a.name.localeCompare(b.name))
-    .map((customer) => {
-      const propertyCount = store.properties.filter((p) => p.customerId === customer.id).length;
-      const isActive = customer.id === state.selectedCustomerId;
-      return `
-        <li>
-          <button class="customer-item ${isActive ? "is-active" : ""}" data-id="${customer.id}">
-            <strong>${customer.name}</strong>
-            <span class="customer-meta">${propertyCount} ${propertyCount === 1 ? "property" : "properties"}</span>
-            <span class="customer-meta">${customer.phone}</span>
-          </button>
-        </li>
-      `;
-    })
-    .join("");
-
-  customerListEl.innerHTML = items || "<li class=\"muted\">No customers yet.</li>";
-}
-
-function renderCustomerDetail() {
-  const customer = store.customers.find((c) => c.id === state.selectedCustomerId);
-  if (!customer) {
-    customerDetailEl.innerHTML = `
-      <div class="empty-state">
-        <h2>Get started</h2>
-        <p>Add a customer or pick one from the list to see their properties, controller clocks, and inspection notes.</p>
-      </div>
-    `;
-    return;
-  }
-
-  const properties = store.properties.filter((property) => property.customerId === customer.id);
-  const propertiesMarkup = properties.length
-    ? properties.map(renderPropertyCard).join("")
-    : `<div class="empty-state"><p>No properties added yet. Use the form below to add the first property for ${customer.name}.</p></div>`;
-
-  customerDetailEl.innerHTML = `
-    <article class="customer-card">
-      <header>
-        <div>
-          <h2>${customer.name}</h2>
-          <div class="contact-group">
-            <span><strong>Email:</strong> <a href="mailto:${customer.email}">${customer.email}</a></span>
-            <span><strong>Phone:</strong> <a href="tel:${customer.phone}">${customer.phone}</a></span>
-          </div>
-        </div>
-      </header>
-      <section class="properties">
-        <h3 class="property-title">Properties</h3>
-        ${propertiesMarkup}
-      </section>
-      <details class="inline-form" open>
-        <summary>Add a property</summary>
-        <form class="form" data-action="add-property" data-customer-id="${customer.id}">
-          <label>
-            <span>Property name (optional)</span>
-            <input type="text" name="name" placeholder="West Entrance">
-          </label>
-          <label>
-            <span>Address</span>
-            <input type="text" name="address" required placeholder="123 Main St, City, ST">
-          </label>
-          <label>
-            <span>Notes</span>
-            <textarea name="notes" rows="3" placeholder="Include access instructions, watering restrictions, etc."></textarea>
-          </label>
-          <button type="submit" class="btn primary">Save property</button>
-        </form>
-      </details>
-    </article>
-  `;
-}
-
-function renderPropertyCard(property) {
-  const clocks = store.clocks.filter((clock) => clock.propertyId === property.id);
-  const clockMarkup = clocks.length
-    ? clocks.map(renderClockCard).join("")
-    : `<p class="muted">No clocks recorded yet. Use the form below to add the first controller.</p>`;
-
-  return `
-    <article class="property-card" data-property-id="${property.id}">
-      <header>
-        <div>
-          <h4 class="property-title">${property.name || property.address}</h4>
-          <div class="property-address">${property.address}</div>
-        </div>
-        <span class="tag">${clocks.length} ${clocks.length === 1 ? "clock" : "clocks"}</span>
-      </header>
-      ${property.notes ? `<div class="property-notes"><strong>Notes:</strong> ${property.notes}</div>` : ""}
-      <section class="clock-section">
-        <h4>Clocks & inspections</h4>
-        <div class="clock-list">
-          ${clockMarkup}
-        </div>
-      </section>
-      <details class="inline-form">
-        <summary>Add a clock</summary>
-        <form class="form" data-action="add-clock" data-property-id="${property.id}">
-          <div class="two-col">
-            <label>
-              <span>Make</span>
-              <input type="text" name="make" required placeholder="Rain Bird">
-            </label>
-            <label>
-              <span>Model</span>
-              <input type="text" name="model" required placeholder="ESP-Me">
-            </label>
-            <label>
-              <span>Zone count</span>
-              <input type="number" name="zoneCount" min="1" required placeholder="12">
-            </label>
-          </div>
-          <button type="submit" class="btn primary">Save clock</button>
-        </form>
-      </details>
-    </article>
-  `;
-}
-
-function renderClockCard(clock) {
-  const inspections = clock.inspections ?? [];
-  const inspectionMarkup = inspections.length
-    ? inspections
-        .slice()
-        .sort((a, b) => b.date.localeCompare(a.date))
-        .map(
-          (inspection) => `
-            <div class="inspection-entry">
-              <strong>${formatDate(inspection.date)} &middot; ${inspection.status}</strong>
-              ${inspection.notes ? `<span>${inspection.notes}</span>` : ""}
-            </div>
-          `,
-        )
-        .join("")
-    : `<p class="muted">No inspections logged yet.</p>`;
-
-  return `
-    <div class="clock-card" data-clock-id="${clock.id}">
-      <div>
-        <strong>${clock.make} &ndash; ${clock.model}</strong>
-        <div class="clock-meta">Zones: ${clock.zoneCount}</div>
-      </div>
-      <section class="inspection-list">
-        ${inspectionMarkup}
-      </section>
-      <details class="inline-form">
-        <summary>Log inspection</summary>
-        <form class="form" data-action="add-inspection" data-clock-id="${clock.id}">
-          <div class="two-col">
-            <label>
-              <span>Date</span>
-              <input type="date" name="date" required>
-            </label>
-            <label>
-              <span>Status</span>
-              <select name="status" required>
-                <option value="">Select status</option>
-                <option value="Passed">Passed</option>
-                <option value="Needs Follow-up">Needs Follow-up</option>
-                <option value="Needs Repair">Needs Repair</option>
-              </select>
-            </label>
-          </div>
-          <label>
-            <span>Notes</span>
-            <textarea name="notes" rows="2" placeholder="Document pressure checks, parts replaced, scheduling updates, etc."></textarea>
-          </label>
-          <button type="submit" class="btn primary">Save inspection</button>
-        </form>
-      </details>
-    </div>
-  `;
-}
-
-function handleAddCustomer(form) {
-  const formData = new FormData(form);
-  const customer = {
-    id: createId("cust"),
-    name: formData.get("name").trim(),
-    email: formData.get("email").trim(),
-    phone: formData.get("phone").trim(),
-  };
-
-  if (!customer.name || !customer.email || !customer.phone) {
-    alert("Please fill in name, email, and phone for the customer.");
-    return;
-  }
-
-  store.customers.push(customer);
-  form.reset();
-  closeDetails(form);
-  renderCustomers();
-  selectCustomer(customer.id);
-}
-
-function handleAddProperty(form) {
-  const formData = new FormData(form);
-  const property = {
-    id: createId("prop"),
-    customerId: form.dataset.customerId,
-    name: formData.get("name").trim(),
-    address: formData.get("address").trim(),
-    notes: formData.get("notes").trim(),
-  };
-
-  if (!property.address) {
-    alert("Please provide an address for the property.");
-    return;
-  }
-
-  store.properties.push(property);
-  form.reset();
-  closeDetails(form);
-  renderCustomers();
-  renderCustomerDetail();
-}
-
-function handleAddClock(form) {
-  const formData = new FormData(form);
-  const zoneCountRaw = formData.get("zoneCount");
-  const zoneCount = Number.parseInt(zoneCountRaw, 10);
-  const clock = {
-    id: createId("clock"),
-    propertyId: form.dataset.propertyId,
-    make: formData.get("make").trim(),
-    model: formData.get("model").trim(),
-    zoneCount: Number.isNaN(zoneCount) ? 0 : zoneCount,
-    inspections: [],
-  };
-
-  if (!clock.make || !clock.model || !zoneCount) {
-    alert("Make, model, and zone count are required for a clock.");
-    return;
-  }
-
-  store.clocks.push(clock);
-  form.reset();
-  closeDetails(form);
-  renderCustomerDetail();
-}
-
-function handleAddInspection(form) {
-  const formData = new FormData(form);
-  const inspection = {
-    date: formData.get("date"),
-    status: formData.get("status"),
-    notes: formData.get("notes").trim(),
-  };
-
-  if (!inspection.date || !inspection.status) {
-    alert("Inspection date and status are required.");
-    return;
-  }
-
-  const clock = store.clocks.find((c) => c.id === form.dataset.clockId);
-  if (!clock) return;
-
-  clock.inspections = clock.inspections || [];
-  clock.inspections.push(inspection);
-  form.reset();
-  closeDetails(form);
-  renderCustomerDetail();
-}
-
-function selectCustomer(customerId) {
-  state.selectedCustomerId = customerId;
-  renderCustomers();
-  renderCustomerDetail();
-}
-
-function formatDate(value) {
-  if (!value) return "";
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-
-  return date.toLocaleDateString(undefined, {
-    year: "numeric",
-    month: "short",
-    day: "numeric",
-  });
-}
-
-function createId(prefix) {
-  return `${prefix}-${Math.random().toString(36).slice(2, 8)}-${Date.now().toString(36).slice(-4)}`;
-}
-
-function closeDetails(form) {
-  const details = form.closest("details");
-  if (details) {
-    details.open = false;
-  }
-}
-
-document.addEventListener("DOMContentLoaded", init);

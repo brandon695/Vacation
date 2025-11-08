@@ -9,58 +9,54 @@
 <body data-page="properties">
   <div class="nav"><div class="container">
     <div class="brand">Irrigation Inspection Manager</div>
-    <a href="../index.html">Overview</a><a href="customers.html">Customers</a><a href="properties.html" style="font-weight:700">Properties</a><a href="clocks.html">Clocks</a><a href="inspections.html">Inspections</a><a href="reporting.html">Reporting</a><a href="resources.html">Resources</a><a href="support.html">Support</a>
+    <a href="../index.html">Overview</a><a href="contacts.html">Contacts</a><a href="properties.html" style="font-weight:700">Properties</a><a href="clocks.html">Clocks</a><a href="inspections.html">Inspections</a>
     <a class="btn" href="javascript:printPlan()">Print</a>
   </div></div>
   <div class="container">
+    <header class="app-header">
+      <h1>Properties</h1>
+      <p class="lead">Each property links to a primary contact and must have a unique address to avoid scheduling conflicts.</p>
+    </header>
 
-<div class="hero">
-  <h1 class="h1">Property portfolio</h1>
-  <p class="lead">Document every site you maintain, assign it to a customer, and capture critical notes for the field team.</p>
-  <div class="actions" style="margin-top:12px">
-    <a class="btn" href="customers.html">Review customer directory</a>
-    <a class="btn" href="inspections.html">Log inspections</a>
-  </div>
-</div>
-
-<div class="grid cols-2" style="margin-top:24px">
-  <div class="card">
-    <h2 class="h2">Add a property</h2>
-    <p class="muted">Link the location to a customer and share any access notes the crew should know.</p>
-    <form id="property-form" class="stack-form" autocomplete="off">
-      <label>Customer
-        <select id="property-customer" name="customerId" required>
-          <option value="">Loading customers...</option>
-        </select>
-      </label>
-      <label>Property name
-        <input name="name" placeholder="North Entrance Beds" required>
-      </label>
-      <label>Street address
-        <input name="address" placeholder="1234 Sprinkler Way, Springfield">
-      </label>
-      <label>Site notes
-        <textarea name="notes" placeholder="Gate code, hazards, or seasonal reminders"></textarea>
-      </label>
-      <button type="submit">Save property</button>
-      <div id="property-feedback" class="form-feedback"></div>
-    </form>
-  </div>
-  <div class="card">
-    <h2 class="h2">Managed properties</h2>
-    <p class="muted">See which customer owns each site and how many inspections you've logged.</p>
-    <table class="table" id="property-table">
-      <thead>
-        <tr><th>Property</th><th>Customer</th><th>Notes</th></tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="99" class="muted">Loading properties...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-  <div class="footer">Detailed property records make on-site troubleshooting faster.</div>
+    <div class="grid cols-2" style="margin-top:24px">
+      <div class="card">
+        <h2 class="h3">Add or edit a property</h2>
+        <form id="property-form" class="stack-form">
+          <label>Contact
+            <select id="property-contact" name="contactId" required>
+              <option value="">Loading contacts…</option>
+            </select>
+          </label>
+          <label>Property name<input name="name" required placeholder="Site name"></label>
+          <label>Address<input name="address" required placeholder="Street address"></label>
+          <div class="grid cols-2" style="gap:12px">
+            <label>City<input name="city" placeholder="City"></label>
+            <label>State<input name="state" placeholder="State"></label>
+          </div>
+          <label>Postal code<input name="postalCode" placeholder="ZIP or postal code"></label>
+          <label>Notes<textarea name="notes" placeholder="Access notes, preferred entry, gate codes…"></textarea></label>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary" id="property-submit">Save property</button>
+            <button type="button" class="btn" id="property-cancel" hidden>Cancel edit</button>
+          </div>
+          <div class="form-feedback" id="property-feedback"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2 class="h3">Portfolio</h2>
+        <div class="table-wrapper">
+          <table class="table" id="property-table">
+            <thead>
+              <tr><th>Property</th><th>Contact</th><th>Location</th><th>Notes</th><th style="width:140px">Actions</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="5" class="muted">Loading properties…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin-top:12px">Removing a property deletes its controllers and inspection history.</p>
+      </div>
+    </div>
   </div>
 </body>
 </html>

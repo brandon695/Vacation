@@ -2,45 +2,52 @@
 <html lang="en">
 <head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Contacts</title>
+<title>Contacts • Irrigation Inspection Manager</title>
 <link rel="stylesheet" href="../assets/styles.css">
 <script defer src="../assets/app.js"></script>
 </head>
-<body>
+<body data-page="contacts">
   <div class="nav"><div class="container">
-    <div class="brand">Lake Catherine & Hot Springs – Family Trip</div>
-    <a href="/mnt/data/lake_catherine_site/index.html" >Overview</a><a href="/mnt/data/lake_catherine_site/pages/itinerary.html" >Itinerary</a><a href="/mnt/data/lake_catherine_site/pages/activities.html" >Activities</a><a href="/mnt/data/lake_catherine_site/pages/meals.html" >Meals</a><a href="/mnt/data/lake_catherine_site/pages/packing.html" >Packing</a><a href="/mnt/data/lake_catherine_site/pages/shopping.html" >Shopping</a><a href="/mnt/data/lake_catherine_site/pages/contacts.html" style='font-weight:700'>Contacts</a><a href="/mnt/data/lake_catherine_site/pages/appendices.html" >Appendices</a>
+    <div class="brand">Irrigation Inspection Manager</div>
+    <a href="../index.html">Overview</a><a href="contacts.html" style="font-weight:700">Contacts</a><a href="properties.html">Properties</a><a href="clocks.html">Clocks</a><a href="inspections.html">Inspections</a>
     <a class="btn" href="javascript:printPlan()">Print</a>
   </div></div>
   <div class="container">
-  
-<h2 class="h2">Contacts & Addresses</h2>
-<div class="grid cols-2">
-  <div class="card"><h3 class="h3">Hot Springs & Lake Catherine</h3>
-    <ul>
-      <li><strong>Lake Catherine State Park</strong><br>291 State Park Rd, Glassy, AR 71913<br><a href="tel:+15012629722">501‑262‑9722</a></li>
-      <li><strong>Lake Catherine Stables (Reservations)</strong><br>Inside Lake Catherine SP – Stables Area<br><a href="tel:+15012620777">501‑262‑0777</a></li>
-      <li><strong>Hot Springs Mountain Tower</strong><br>401 Hot Springs Mountain Dr, Hot Springs, AR 71901<br><a href="tel:+15018814020">501‑881‑4020</a></li>
-      <li><strong>National Park Duck Tours</strong><br>418 Central Ave, Hot Springs, AR<br><a href="tel:+15015201242">501‑520‑1242</a></li>
-      <li><strong>Quapaw Baths & Spa</strong><br>201 Central Ave, Hot Springs, AR<br><a href="tel:+15016206714">501‑620‑6714</a></li>
-      <li><strong>Buckstaff Bathhouse</strong><br>369 Central Ave, Hot Springs, AR<br><a href="tel:+15016206714">501‑620‑6714</a></li>
-      <li><strong>Mid‑America Science Museum</strong><br>500 Mid America Blvd, Hot Springs, AR<br><a href="tel:+15017673461">501‑767‑3461</a></li>
-      <li><strong>Adventureworks Zipline Park</strong><br>1700 Shady Grove Rd, Hot Springs, AR<br><a href="tel:+15012629182">501‑262‑9182</a></li>
-      <li><strong>Hot Springs Off‑Road Park</strong><br>2100 Mill Creek Rd, Hot Springs, AR<br><a href="tel:+15016253600">501‑625‑3600</a></li>
-    </ul>
-  </div>
-  <div class="card"><h3 class="h3">Quartz & Mountain View</h3>
-    <ul>
-      <li><strong>Ron Coleman Mining</strong><br>211 Crystal Ridge Ln, Jessieville, AR 71949<br><a href="tel:+15019845396">501‑984‑5396</a></li>
-      <li><strong>Wegner Quartz Crystal Mines</strong><br>82 Wegner Ranch Rd, Mount Ida, AR 71957<br><a href="tel:+18708672309">870‑867‑2309</a></li>
-      <li><strong>Blanchard Springs Caverns Visitor Center</strong><br>704 Blanchard Springs Rd, Fifty‑Six, AR 72533<br><a href="tel:+18707572211">870‑757‑2211</a></li>
-      <li><strong>Country Pet Playground</strong><br>2423 Hub Willis Rd, Mountain View, AR<br><a href="tel:+18702697499">870‑269‑7499</a></li>
-    </ul>
-  </div>
-</div>
-<p><a class="btn" href="/mnt/data/Lake_Catherine_Appendix_C_Contacts_v6.pdf">Download Contacts PDF</a></p>
+    <header class="app-header">
+      <h1>Service contacts</h1>
+      <p class="lead">Maintain the directory of property managers and site supervisors that are linked to every property.</p>
+    </header>
 
-  <div class="footer">Built for easy printing & quick reference. Hours/prices may change—call ahead.</div>
+    <div class="grid cols-2" style="margin-top:24px">
+      <div class="card">
+        <h2 class="h3">Add or edit a contact</h2>
+        <form id="contact-form" class="stack-form">
+          <label>Name<input name="name" required placeholder="Contact name"></label>
+          <label>Organization<input name="organization" placeholder="Company or department"></label>
+          <label>Phone<input name="phone" placeholder="(555) 555-1234"></label>
+          <label>Email<input type="email" name="email" placeholder="contact@example.com"></label>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary" id="contact-submit">Save contact</button>
+            <button type="button" class="btn" id="contact-cancel" hidden>Cancel edit</button>
+          </div>
+          <div class="form-feedback" id="contact-feedback"></div>
+        </form>
+      </div>
+      <div class="card">
+        <h2 class="h3">Directory</h2>
+        <div class="table-wrapper">
+          <table class="table" id="contacts-table">
+            <thead>
+              <tr><th>Name</th><th>Phone</th><th>Email</th><th style="width:140px">Actions</th></tr>
+            </thead>
+            <tbody>
+              <tr><td colspan="4" class="muted">Loading contacts…</td></tr>
+            </tbody>
+          </table>
+        </div>
+        <p class="muted" style="margin-top:12px">Deleting a contact removes all linked properties and clocks.</p>
+      </div>
+    </div>
   </div>
 </body>
 </html>

@@ -9,58 +9,79 @@
 <body data-page="inspections">
   <div class="nav"><div class="container">
     <div class="brand">Irrigation Inspection Manager</div>
-    <a href="../index.html">Overview</a><a href="customers.html">Customers</a><a href="properties.html">Properties</a><a href="clocks.html">Clocks</a><a href="inspections.html" style="font-weight:700">Inspections</a><a href="reporting.html">Reporting</a><a href="resources.html">Resources</a><a href="support.html">Support</a>
+    <a href="../index.html">Overview</a><a href="contacts.html">Contacts</a><a href="properties.html">Properties</a><a href="clocks.html">Clocks</a><a href="inspections.html" style="font-weight:700">Inspections</a>
     <a class="btn" href="javascript:printPlan()">Print</a>
   </div></div>
   <div class="container">
+    <header class="app-header">
+      <h1>Inspection workflow</h1>
+      <p class="lead">Select a property, choose a clock, then run a new inspection, resume drafts, or review prior reports.</p>
+    </header>
 
-<div class="hero">
-  <h1 class="h1">Inspection log</h1>
-  <p class="lead">Track zone walkthroughs, note corrective actions, and record the inspection status for every property.</p>
-  <div class="actions" style="margin-top:12px">
-    <a class="btn" href="properties.html">Review property details</a>
-    <a class="btn" href="customers.html">Contact customers</a>
-  </div>
-</div>
+    <div class="grid cols-2" style="margin-top:24px">
+      <div class="card">
+        <h2 class="h3">Select a clock</h2>
+        <form class="stack-form" id="inspection-selector">
+          <label>Property
+            <select id="inspection-property">
+              <option value="">Loading properties…</option>
+            </select>
+          </label>
+          <label>Clock
+            <select id="inspection-clock" disabled>
+              <option value="">Select a property first</option>
+            </select>
+          </label>
+        </form>
+        <div class="form-actions" style="margin-top:12px">
+          <button type="button" class="btn btn--primary" id="inspection-new" disabled>Run new inspection</button>
+          <button type="button" class="btn" id="inspection-resume" disabled>Resume in-progress</button>
+        </div>
+        <div class="form-feedback" id="inspection-feedback"></div>
+      </div>
+      <div class="card" id="inspection-detail">
+        <h2 class="h3">Details</h2>
+        <div id="inspection-detail-content" class="muted">Select a property and clock to begin.</div>
+        <form id="inspection-form" class="stack-form hidden">
+          <input type="hidden" name="inspectionId">
+          <label>Status
+            <select name="status">
+              <option value="in_progress">In progress</option>
+              <option value="completed">Completed</option>
+              <option value="archived">Archived</option>
+              <option value="cancelled">Cancelled</option>
+            </select>
+          </label>
+          <label>Summary<textarea name="summary" placeholder="What was inspected?"></textarea></label>
+          <label>Notes<textarea name="notes" placeholder="Zone issues, recommended repairs, follow-up tasks…"></textarea></label>
+          <div class="grid cols-2" style="gap:12px">
+            <label>Started on<input type="date" name="startedAt"></label>
+            <label>Completed on<input type="date" name="completedAt"></label>
+          </div>
+          <div class="form-actions">
+            <button type="submit" class="btn btn--primary">Save progress</button>
+            <button type="button" class="btn" data-action="complete">Complete inspection</button>
+            <button type="button" class="btn" data-action="archive">Archive</button>
+            <button type="button" class="btn btn--danger" data-action="delete">Delete</button>
+          </div>
+        </form>
+      </div>
+    </div>
 
-<div class="grid cols-2" style="margin-top:24px">
-  <div class="card">
-    <h2 class="h2">Log an inspection</h2>
-    <p class="muted">Assign the inspection to a property, document the visit date, and summarize what your crew found.</p>
-    <form id="inspection-form" class="stack-form" autocomplete="off">
-      <label>Property
-        <select id="inspection-property" name="propertyId" required>
-          <option value="">Loading properties...</option>
-        </select>
-      </label>
-      <label>Inspection date
-        <input type="date" name="inspectionDate" required>
-      </label>
-      <label>Status
-        <input name="status" placeholder="Scheduled, In progress, Complete">
-      </label>
-      <label>Summary &amp; follow-up
-        <textarea name="summary" placeholder="Zone findings, repairs recommended, photos captured"></textarea>
-      </label>
-      <button type="submit">Save inspection</button>
-      <div id="inspection-feedback" class="form-feedback"></div>
-    </form>
-  </div>
-  <div class="card">
-    <h2 class="h2">Recent inspections</h2>
-    <p class="muted">Monitor outstanding follow-up work and keep a trail of what was evaluated in each zone.</p>
-    <table class="table" id="inspection-table">
-      <thead>
-        <tr><th>Property</th><th>Visit</th><th>Summary</th></tr>
-      </thead>
-      <tbody>
-        <tr><td colspan="99" class="muted">Loading inspections...</td></tr>
-      </tbody>
-    </table>
-  </div>
-</div>
-
-  <div class="footer">Completed inspections feed into your reports and renewal conversations.</div>
+    <div class="card" style="margin-top:24px">
+      <h2 class="h3">Past inspections</h2>
+      <div class="table-wrapper">
+        <table class="table" id="inspection-history">
+          <thead>
+            <tr><th>Started</th><th>Status</th><th>Summary</th><th>Completed</th></tr>
+          </thead>
+          <tbody>
+            <tr><td colspan="4" class="muted">Select a clock to view history.</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p class="muted" style="margin-top:12px">Click a row to view the saved inspection snapshot.</p>
+    </div>
   </div>
 </body>
 </html>

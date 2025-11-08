@@ -36,8 +36,8 @@ ul{margin:8px 0 12px 18px}li{margin:8px 0}
 .stack-form label{display:flex;flex-direction:column;font-weight:600;gap:6px}
 .stack-form input,.stack-form select,.stack-form textarea{padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:15px;font-family:inherit;resize:vertical}
 .stack-form textarea{min-height:96px}
-.stack-form button{align-self:flex-start;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-weight:600;cursor:pointer;transition:opacity .2s}
-.stack-form button:hover{opacity:.9}
+.stack-form button:not(.btn){align-self:flex-start;background:var(--accent);color:#fff;border:none;border-radius:10px;padding:10px 18px;font-weight:600;cursor:pointer;transition:opacity .2s}
+.stack-form button:not(.btn):hover{opacity:.9}
 .form-feedback{font-size:14px;margin-top:4px;min-height:18px}
 .form-feedback[data-state="success"]{color:#047857}
 .form-feedback[data-state="error"]{color:#b91c1c}
@@ -198,6 +198,14 @@ body {
   display: grid;
   gap: 14px;
 }
+.table-actions{display:flex;gap:8px;flex-wrap:wrap}
+.btn--primary{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn--primary:hover{opacity:.9}
+.btn--danger{background:#fee2e2;color:#b91c1c;border-color:#fecaca}
+.btn--danger:hover{background:#fecaca}
+.hidden{display:none!important}
+.stack-form .form-actions,.stack-form .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.card__snapshot{background:#f8fafc;border:1px solid var(--border);border-radius:12px;padding:16px;line-height:1.6}
 
 .form label {
   display: grid;
