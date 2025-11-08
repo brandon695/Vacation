@@ -412,6 +412,10 @@ const customerListEl = document.getElementById("customerList");
 const customerDetailEl = document.getElementById("customerDetail");
 
 function init() {
+  if (!customerListEl || !customerDetailEl) {
+    return;
+  }
+
   renderCustomers();
   if (store.customers.length) {
     selectCustomer(store.customers[0].id);
@@ -420,6 +424,10 @@ function init() {
 }
 
 function bindEvents() {
+  if (!customerListEl) {
+    return;
+  }
+
   customerListEl.addEventListener("click", (event) => {
     const button = event.target.closest("button.customer-item");
     if (!button) return;
